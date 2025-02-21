@@ -8,7 +8,7 @@ So that's what you call me. You know, that or, uh, His Dudeness, or uh, Duder, o
 ---
 
 ## **What I Do**
-💻 **Hood Rat Shii:** Been up to no good for 24 years so you don’t have to. You are welcome.
+💻 **Hood Rat Shii:** Been up to no good for 24 years so you don’t have to. You are welcome.      
 📖 **Things:** I write, I look at things, I follow the street rats- because they all make life more interesting.  
 🧠 **ADHD-fueled Experiments:** I stay productive by being unproductive.  
 
