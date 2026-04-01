@@ -1,55 +1,780 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Yes, It Is</title>
-    <style>
-        body {
-            text-align: center;
-            font-family: Arial, sans-serif;
-            background-color: #f0f0f0;
-        }
-        h1 {
-            font-size: 50px;
-            color: red;
-            transition: transform 0.5s ease-in-out;
-        }
-        .moving-box {
-            display: inline-block;
-            background-color: yellow;
-            padding: 20px;
-            font-size: 24px;
-            font-weight: bold;
-            margin-top: 20px;
-            animation: moveAround 3s infinite alternate;
-        }
-        @keyframes moveAround {
-            0% { transform: translateX(-100px); }
-            100% { transform: translateX(100px); }
-        }
-    </style>
+<meta charset="UTF-8">
+<title>IsaacOS</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --accent: #3b8cf8;
+  --accent-soft: rgba(59,140,248,0.18);
+  --text-primary: rgba(255,255,255,0.92);
+  --text-secondary: rgba(255,255,255,0.45);
+  --text-tertiary: rgba(255,255,255,0.22);
+  --red: #ff5f57; --yellow: #febc2e; --green: #28c840;
+  --surface: rgba(18,18,22,0.88);
+  --glass-border: rgba(255,255,255,0.08);
+  --radius-win: 14px;
+  --shadow-win: 0 32px 80px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.07);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'DM Sans',system-ui,sans-serif; height:100vh; overflow:hidden; background:#0a0a0e; -webkit-font-smoothing:antialiased; }
+
+#desktop {
+  width:100%; height:100%; position:relative;
+  background:url('https://czogxhqruxzhdiotdwyn.supabase.co/storage/v1/object/public/media/1775023689491-7wqyi3dd5sd.jpeg') center/cover no-repeat;
+  transition: background-image 0.5s ease;
+}
+#desktop::after { content:''; position:absolute; inset:0; background:linear-gradient(160deg,rgba(10,10,20,0.3) 0%,rgba(5,5,10,0.1) 50%,rgba(10,10,20,0.35) 100%); pointer-events:none; }
+
+/* ── Menu Bar ── */
+#menubar {
+  position:relative; z-index:9999; height:28px;
+  background:rgba(12,12,16,0.82); backdrop-filter:blur(24px) saturate(180%);
+  border-bottom:1px solid rgba(255,255,255,0.06);
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 14px; color:var(--text-primary); font-size:13px;
+}
+.menubar-left { display:flex; align-items:center; gap:16px; }
+.menubar-right { display:flex; align-items:center; gap:12px; color:var(--text-secondary); font-size:12px; }
+.menu-app { font-weight:600; font-size:13px; }
+.menu-item { color:var(--text-secondary); font-size:12.5px; cursor:default; transition:color 0.12s; }
+.menu-item:hover { color:var(--text-primary); }
+.menubar-indicator { width:6px; height:6px; border-radius:50%; background:var(--green); box-shadow:0 0 6px var(--green); }
+.mb-settings { cursor:pointer; font-size:14px; transition:transform 0.2s; }
+.mb-settings:hover { transform:rotate(30deg); }
+
+/* ── Dock ── */
+#dock {
+  position:absolute; left:14px; top:50%; transform:translateY(-50%);
+  z-index:9000; display:flex; flex-direction:column; gap:8px; padding:10px 8px;
+  background:rgba(16,16,20,0.65); backdrop-filter:blur(28px) saturate(160%);
+  border-radius:20px; border:1px solid var(--glass-border);
+  box-shadow:0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
+}
+.dock-sep { height:1px; background:rgba(255,255,255,0.07); margin:2px 0; }
+.dock-icon {
+  width:48px; height:48px; border-radius:13px; display:flex; align-items:center;
+  justify-content:center; font-size:22px; cursor:pointer;
+  transition:transform 0.2s cubic-bezier(0.34,1.56,0.64,1), background 0.15s;
+  position:relative; background:rgba(255,255,255,0.04);
+}
+.dock-icon:hover { transform:scale(1.18) translateX(6px); background:rgba(255,255,255,0.09); }
+.dock-icon.active::after { content:''; position:absolute; bottom:-6px; left:50%; transform:translateX(-50%); width:4px; height:4px; border-radius:50%; background:rgba(255,255,255,0.5); }
+.dock-tip {
+  position:absolute; left:62px; top:50%; transform:translateY(-50%);
+  background:rgba(18,18,22,0.95); border:1px solid rgba(255,255,255,0.1);
+  color:var(--text-primary); font-size:11.5px; font-weight:500;
+  padding:4px 10px; border-radius:7px; white-space:nowrap;
+  opacity:0; pointer-events:none; transition:opacity 0.12s;
+}
+.dock-icon:hover .dock-tip { opacity:1; }
+
+/* ── Windows ── */
+.window {
+  position:absolute; background:var(--surface); border-radius:var(--radius-win);
+  overflow:hidden; box-shadow:var(--shadow-win); display:none;
+  border:1px solid var(--glass-border);
+  backdrop-filter:blur(32px) saturate(180%);
+  animation:winOpen 0.22s cubic-bezier(0.34,1.4,0.64,1);
+}
+@keyframes winOpen { from{opacity:0;transform:scale(0.93)} to{opacity:1;transform:scale(1)} }
+.window.focused { box-shadow:0 36px 90px rgba(0,0,0,0.75), 0 0 0 1px rgba(255,255,255,0.1); }
+
+/* ── Titlebar ── */
+.titlebar {
+  height:40px; background:rgba(28,28,34,0.95);
+  display:flex; align-items:center; padding:0 14px; cursor:grab;
+  border-bottom:1px solid rgba(255,255,255,0.05); position:relative; user-select:none;
+}
+.titlebar:active { cursor:grabbing; }
+.tls { display:flex; gap:7px; align-items:center; }
+.tl { width:13px; height:13px; border-radius:50%; cursor:pointer; flex-shrink:0; transition:filter 0.12s; position:relative; }
+.tl.r { background:var(--red); }
+.tl.y { background:var(--yellow); }
+.tl.g { background:var(--green); }
+.tl:hover { filter:brightness(1.15); }
+.tl.r:hover::after { content:'×'; }
+.tl.y:hover::after { content:'−'; }
+.tl.g:hover::after { content:'+'; }
+.tl::after { position:absolute; font-size:9px; font-weight:800; color:rgba(0,0,0,0.55); top:50%; left:50%; transform:translate(-50%,-50%); line-height:1; }
+.tb-title { position:absolute; left:50%; transform:translateX(-50%); font-size:13px; font-weight:500; color:var(--text-secondary); pointer-events:none; white-space:nowrap; }
+
+/* ── Content ── */
+.content { padding:18px; color:var(--text-primary); height:calc(100% - 40px); overflow-y:auto; font-size:13.5px; line-height:1.65; }
+.content::-webkit-scrollbar { width:4px; }
+.content::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.1); border-radius:3px; }
+
+/* ── About ── */
+.about-header { display:flex; align-items:center; gap:16px; margin-bottom:18px; }
+.avatar { width:54px; height:54px; border-radius:14px; background:linear-gradient(135deg,#3b8cf8,#9b59b6); display:flex; align-items:center; justify-content:center; font-size:26px; flex-shrink:0; box-shadow:0 4px 16px rgba(59,140,248,0.3); }
+.about-name { font-size:19px; font-weight:600; }
+.about-role { font-size:12px; color:var(--text-secondary); margin-top:3px; }
+.about-divider { height:1px; background:var(--glass-border); margin:14px 0; }
+.about-row { display:flex; justify-content:space-between; padding:8px 10px; border-radius:8px; font-size:13px; margin-bottom:3px; transition:background 0.12s; }
+.about-row:hover { background:rgba(255,255,255,0.04); }
+.arl { color:var(--text-secondary); font-size:12px; }
+.arv { font-weight:500; }
+.cta-btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; margin-top:16px; padding:9px 16px; background:var(--accent-soft); border:1px solid rgba(59,140,248,0.25); border-radius:9px; color:var(--accent); font-size:13px; font-weight:500; text-decoration:none; transition:all 0.18s; width:100%; }
+.cta-btn:hover { background:rgba(59,140,248,0.28); transform:translateY(-1px); }
+
+/* ── Projects ── */
+.proj-item { display:flex; align-items:center; gap:13px; padding:11px 13px; border-radius:10px; margin-bottom:6px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); cursor:pointer; transition:all 0.15s; }
+.proj-item:hover { background:rgba(255,255,255,0.06); border-color:rgba(255,255,255,0.1); transform:translateX(3px); }
+.proj-ico { width:38px; height:38px; border-radius:10px; background:rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:center; font-size:17px; flex-shrink:0; }
+.proj-name { font-size:13.5px; font-weight:500; }
+.proj-desc { font-size:12px; color:var(--text-secondary); margin-top:2px; }
+.proj-arr { margin-left:auto; color:var(--text-tertiary); font-size:16px; }
+
+/* ── Files ── */
+.path-bar { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07); border-radius:8px; padding:6px 12px; font-size:12px; color:var(--text-secondary); margin-bottom:12px; }
+.file-row { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:7px; font-size:13px; cursor:pointer; transition:background 0.12s; user-select:none; }
+.file-row:hover { background:rgba(255,255,255,0.06); }
+.file-row:active { background:rgba(255,255,255,0.1); transform:scale(0.99); }
+.fi { font-size:15px; width:22px; text-align:center; flex-shrink:0; }
+.file-name { flex:1; }
+.file-sz { color:var(--text-tertiary); font-size:11px; }
+.file-badge { font-size:10px; padding:2px 5px; border-radius:4px; background:rgba(74,222,128,0.15); color:#4ade80; margin-left:4px; border:1px solid rgba(74,222,128,0.2); }
+
+/* ── Browser ── */
+.brow-bar { display:flex; align-items:center; gap:8px; padding:0 14px; height:38px; background:rgba(255,255,255,0.025); border-bottom:1px solid rgba(255,255,255,0.05); }
+.brow-url { flex:1; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.07); border-radius:7px; padding:5px 10px; font-size:12px; color:var(--text-secondary); text-align:center; }
+.brow-btn { width:24px; height:24px; border-radius:6px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06); color:var(--text-secondary); font-size:13px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+.brow-btn:hover { background:rgba(255,255,255,0.1); }
+.link-card { display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); margin-bottom:8px; text-decoration:none; transition:all 0.15s; }
+.link-card:hover { background:rgba(255,255,255,0.07); transform:translateY(-1px); }
+.lf { width:32px; height:32px; border-radius:8px; background:rgba(59,140,248,0.12); display:flex; align-items:center; justify-content:center; font-size:15px; flex-shrink:0; }
+.lt { font-size:13.5px; font-weight:500; color:var(--text-primary); }
+.lu { font-size:11.5px; color:var(--text-secondary); margin-top:1px; }
+.la { margin-left:auto; color:var(--text-tertiary); }
+
+/* ── Terminal ── */
+.term-wrap { background:#070809; height:100%; display:flex; flex-direction:column; }
+#termOutput { flex:1; overflow-y:auto; padding:14px 16px 6px; font-family:'Geist Mono',monospace; font-size:12.5px; line-height:1.8; }
+#termOutput::-webkit-scrollbar { width:4px; }
+#termOutput::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.08); border-radius:2px; }
+.t-prompt { color:#3b8cf8; }
+.t-cmd { color:rgba(255,255,255,0.88); }
+.t-out { color:rgba(255,255,255,0.45); }
+.t-ok { color:#4ade80; }
+.t-err { color:#f87171; }
+.t-link { color:#60a5fa; text-decoration:underline; cursor:pointer; }
+.t-dim { color:rgba(255,255,255,0.2); font-style:italic; }
+.t-hi { color:#fbbf24; }
+.t-pink { color:#f9a8d4; }
+.term-input-row { display:flex; align-items:center; gap:6px; padding:8px 16px 12px; border-top:1px solid rgba(255,255,255,0.05); font-family:'Geist Mono',monospace; font-size:12.5px; }
+.t-ps { color:#3b8cf8; flex-shrink:0; white-space:nowrap; }
+#cmd { flex:1; background:transparent; border:none; outline:none; color:rgba(255,255,255,0.9); font-family:'Geist Mono',monospace; font-size:12.5px; caret-color:#3b8cf8; }
+
+/* ── Pet ── */
+#petwin { width:260px; height:290px; }
+.pet-stage { width:100%; height:calc(100% - 40px); display:flex; flex-direction:column; align-items:center; justify-content:center; background:linear-gradient(160deg,#0b0d14,#10121c); gap:8px; padding:10px; }
+#pet-canvas { width:120px; height:120px; }
+.pet-name { font-size:11px; font-weight:600; color:var(--text-secondary); letter-spacing:0.1em; text-transform:uppercase; }
+.pet-mood { font-size:12px; color:var(--text-tertiary); }
+.pet-actions { display:flex; gap:7px; margin-top:4px; }
+.pet-btn { padding:5px 11px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); border-radius:7px; font-size:11px; color:var(--text-secondary); cursor:pointer; transition:all 0.15s; }
+.pet-btn:hover { background:rgba(255,255,255,0.1); color:var(--text-primary); transform:scale(1.05); }
+
+/* ── File Viewer ── */
+#fileview { width:440px; height:310px; }
+.fv-content { font-family:'Geist Mono',monospace; font-size:12.5px; line-height:1.9; color:rgba(255,255,255,0.65); white-space:pre-wrap; }
+
+/* ── Settings ── */
+#settings-win { width:400px; }
+.settings-section { margin-bottom:20px; }
+.settings-label { font-size:10.5px; font-weight:600; color:var(--text-tertiary); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:10px; }
+.bg-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+.bg-swatch { aspect-ratio:16/9; border-radius:8px; cursor:pointer; border:2px solid transparent; transition:all 0.18s; overflow:hidden; position:relative; }
+.bg-swatch:hover { transform:scale(1.06); }
+.bg-swatch.selected { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
+.bg-swatch img,.bg-swatch .sw-grad { width:100%; height:100%; object-fit:cover; display:block; }
+.sw-label { position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,0.5); font-size:9px; color:rgba(255,255,255,0.7); text-align:center; padding:2px; }
+.settings-row { display:flex; align-items:center; justify-content:space-between; padding:10px 12px; border-radius:8px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); margin-bottom:6px; }
+.sr-label { font-size:13px; color:var(--text-primary); }
+.sr-sub { font-size:11px; color:var(--text-secondary); margin-top:2px; }
+.toggle { width:36px; height:20px; border-radius:10px; background:rgba(255,255,255,0.12); cursor:pointer; position:relative; transition:background 0.2s; flex-shrink:0; }
+.toggle.on { background:var(--accent); }
+.toggle::after { content:''; position:absolute; width:16px; height:16px; border-radius:50%; background:white; top:2px; left:2px; transition:left 0.2s; }
+.toggle.on::after { left:18px; }
+
+/* ── Toast ── */
+#toast { position:absolute; top:40px; right:14px; z-index:99999; background:rgba(22,22,28,0.94); border:1px solid rgba(255,255,255,0.09); border-radius:14px; padding:12px 16px; display:flex; align-items:center; gap:12px; backdrop-filter:blur(20px); box-shadow:0 10px 40px rgba(0,0,0,0.5); opacity:0; transform:translateY(-8px) scale(0.97); transition:all 0.3s cubic-bezier(0.34,1.4,0.64,1); pointer-events:none; max-width:280px; }
+#toast.show { opacity:1; transform:translateY(0) scale(1); }
+.toast-ico { font-size:22px; }
+.toast-t { font-size:13px; font-weight:600; color:var(--text-primary); }
+.toast-m { font-size:12px; color:var(--text-secondary); margin-top:1px; }
+</style>
 </head>
 <body>
-    <h1 id="title">Yes, it is.</h1>
-    <button onclick="makeItSpin()">Make it spin!</button>
-    <div class="moving-box">Yes, it is.</div>
-    <button onclick="increaseCount()">Click Count: <span id="counter">0</span></button>
-    <p id="dynamicText">Yes, it is.</p>
-    
-    <script>
-        let count = 0;
-        function makeItSpin() {
-            document.getElementById("title").style.transform = "rotate(360deg)";
-            setTimeout(() => {
-                document.getElementById("title").style.transform = "rotate(0deg)";
-            }, 500);
+<div id="desktop">
+
+<!-- ── Menu Bar ── -->
+<div id="menubar">
+  <div class="menubar-left">
+    <span style="font-size:16px">&#xF8FF;</span>
+    <span class="menu-app">IsaacOS</span>
+    <span class="menu-item">File</span>
+    <span class="menu-item">Edit</span>
+    <span class="menu-item">View</span>
+    <span class="menu-item">Window</span>
+  </div>
+  <div class="menubar-right">
+    <div class="menubar-indicator"></div>
+    <span id="clock"></span>
+    <span class="mb-settings" onclick="openApp('settings-win')" title="Preferences">⚙️</span>
+  </div>
+</div>
+
+<!-- ── Dock ── -->
+<div id="dock">
+  <div class="dock-icon" id="di-about"       onclick="openApp('about')">👤<span class="dock-tip">About</span></div>
+  <div class="dock-icon" id="di-projects"    onclick="openApp('projects')">🚀<span class="dock-tip">Projects</span></div>
+  <div class="dock-sep"></div>
+  <div class="dock-icon" id="di-files"       onclick="openApp('files')">📁<span class="dock-tip">Files</span></div>
+  <div class="dock-icon" id="di-browser"     onclick="openApp('browser')">🌐<span class="dock-tip">Browser</span></div>
+  <div class="dock-sep"></div>
+  <div class="dock-icon" id="di-terminalApp" onclick="openApp('terminalApp')">💻<span class="dock-tip">Terminal</span></div>
+  <div class="dock-icon" id="di-petwin"      onclick="openApp('petwin')">🐱<span class="dock-tip">Bits the Cat</span></div>
+  <div class="dock-sep"></div>
+  <div class="dock-icon" id="di-settings-win" onclick="openApp('settings-win')">⚙️<span class="dock-tip">Settings</span></div>
+</div>
+
+<!-- ══ WINDOWS ══ -->
+
+<!-- About -->
+<div class="window" id="about" style="top:80px;left:120px;width:400px;">
+  <div class="titlebar"><div class="tls"><div class="tl r" onclick="closeApp('about')"></div><div class="tl y" onclick="closeApp('about')"></div><div class="tl g"></div></div><span class="tb-title">about.txt</span></div>
+  <div class="content">
+    <div class="about-header">
+      <div class="avatar">🧑‍💻</div>
+      <div><div class="about-name">Isaac McGinnis</div><div class="about-role">Builder · Radio Guy · AI Tinkerer</div></div>
+    </div>
+    <div class="about-divider"></div>
+    <div class="about-row"><span class="arl">Favorite AI</span><span class="arv">Claude ✦</span></div>
+    <div class="about-row"><span class="arl">Current Tool</span><span class="arv">zo.computer</span></div>
+    <div class="about-row"><span class="arl">Building</span><span class="arv">Playback · Everybody.FM</span></div>
+    <div class="about-row"><span class="arl">Location</span><span class="arv">Boston, MA</span></div>
+    <a class="cta-btn" href="https://zo-computer.cello.so/a2b9yiA4fId" target="_blank">✦ &nbsp;Get $10 free Zo credit</a>
+  </div>
+</div>
+
+<!-- Projects -->
+<div class="window" id="projects" style="top:130px;left:190px;width:420px;height:320px;">
+  <div class="titlebar"><div class="tls"><div class="tl r" onclick="closeApp('projects')"></div><div class="tl y" onclick="closeApp('projects')"></div><div class="tl g"></div></div><span class="tb-title">Projects</span></div>
+  <div class="content">
+    <div class="proj-item" onclick="window.open('https://everybody.fm','_blank')">
+      <div class="proj-ico">📡</div>
+      <div><div class="proj-name">Playback</div><div class="proj-desc">USA sports data platform · REST + WebSocket API</div></div>
+      <div class="proj-arr">›</div>
+    </div>
+    <div class="proj-item" onclick="window.open('https://everybody.fm','_blank')">
+      <div class="proj-ico">📻</div>
+      <div><div class="proj-name">Everybody.FM</div><div class="proj-desc">AI internet radio · DJ commentary via ElevenLabs</div></div>
+      <div class="proj-arr">›</div>
+    </div>
+    <div class="proj-item">
+      <div class="proj-ico">🧪</div>
+      <div><div class="proj-name">AI Experiments</div><div class="proj-desc">Agents, configs, OpenClaw, OpenCode</div></div>
+      <div class="proj-arr">›</div>
+    </div>
+    <div class="proj-item">
+      <div class="proj-ico">📝</div>
+      <div><div class="proj-name">Writing + Ideas</div><div class="proj-desc">Thoughts on building at the edge</div></div>
+      <div class="proj-arr">›</div>
+    </div>
+  </div>
+</div>
+
+<!-- Files -->
+<div class="window" id="files" style="top:150px;left:270px;width:315px;height:295px;">
+  <div class="titlebar"><div class="tls"><div class="tl r" onclick="closeApp('files')"></div><div class="tl y" onclick="closeApp('files')"></div><div class="tl g"></div></div><span class="tb-title">Files</span></div>
+  <div class="content">
+    <div class="path-bar">🏠 / isaac / Desktop</div>
+    <div class="file-row" onclick="openFile('about')">
+      <span class="fi">👤</span><span class="file-name">about.txt</span><span class="file-sz">2 KB</span>
+    </div>
+    <div class="file-row" onclick="openFile('projects-dir')">
+      <span class="fi">📁</span><span class="file-name">projects/</span><span class="file-sz">—</span>
+    </div>
+    <div class="file-row" onclick="openFile('ideas')">
+      <span class="fi">📄</span><span class="file-name">ideas.md</span><span class="file-sz">14 KB</span>
+    </div>
+    <div class="file-row" onclick="openFile('radio')">
+      <span class="fi">🎙️</span><span class="file-name">radio-drops.wav</span><span class="file-badge">LIVE</span><span class="file-sz">44 MB</span>
+    </div>
+    <div class="file-row" onclick="openFile('cat')">
+      <span class="fi">🐱</span><span class="file-name">cat.jpeg</span><span class="file-sz">1.2 MB</span>
+    </div>
+    <div class="file-row" onclick="openApp('petwin')">
+      <span class="fi">🐾</span><span class="file-name">Bits.app</span><span class="file-sz">cute</span>
+    </div>
+  </div>
+</div>
+
+<!-- File Viewer -->
+<div class="window" id="fileview" style="top:120px;left:200px;width:440px;min-height:200px;">
+  <div class="titlebar"><div class="tls"><div class="tl r" onclick="closeApp('fileview')"></div><div class="tl y" onclick="closeApp('fileview')"></div><div class="tl g"></div></div><span class="tb-title" id="fv-title">Viewer</span></div>
+  <div class="content" id="fv-body" style="height:auto;min-height:160px;max-height:400px;"></div>
+</div>
+
+<!-- Browser -->
+<div class="window" id="browser" style="top:100px;left:230px;width:500px;height:350px;">
+  <div class="titlebar"><div class="tls"><div class="tl r" onclick="closeApp('browser')"></div><div class="tl y" onclick="closeApp('browser')"></div><div class="tl g"></div></div><span class="tb-title">Browser</span></div>
+  <div class="brow-bar">
+    <div class="brow-btn">‹</div><div class="brow-btn">›</div>
+    <div class="brow-url">isaacmcginnis.com</div>
+    <div class="brow-btn">↻</div>
+  </div>
+  <div class="content" style="padding:16px;">
+    <a class="link-card" href="https://isaacmcginnis.com" target="_blank"><div class="lf">🌐</div><div><div class="lt">isaacmcginnis.com</div><div class="lu">Personal portfolio</div></div><div class="la">↗</div></a>
+    <a class="link-card" href="https://everybody.fm" target="_blank"><div class="lf">📻</div><div><div class="lt">Everybody.FM</div><div class="lu">everybody.fm — AI internet radio</div></div><div class="la">↗</div></a>
+    <a class="link-card" href="https://zo-computer.cello.so/a2b9yiA4fId" target="_blank"><div class="lf">✦</div><div><div class="lt">Zo Computer — $10 Credit</div><div class="lu">zo-computer.cello.so</div></div><div class="la">↗</div></a>
+    <a class="link-card" href="mailto:hi@isaac.help"><div class="lf">✉️</div><div><div class="lt">hi@isaac.help</div><div class="lu">Drop a line</div></div><div class="la">↗</div></a>
+  </div>
+</div>
+
+<!-- Terminal -->
+<div class="window" id="terminalApp" style="top:170px;left:340px;width:580px;height:370px;">
+  <div class="titlebar"><div class="tls"><div class="tl r" onclick="closeApp('terminalApp')"></div><div class="tl y" onclick="closeApp('terminalApp')"></div><div class="tl g"></div></div><span class="tb-title">isaac@isaacOS — zsh</span></div>
+  <div class="term-wrap">
+    <div id="termOutput">
+      <div><span class="t-dim">IsaacOS v2.0 — type </span><span style="color:rgba(255,255,255,0.45);font-family:'Geist Mono',monospace">help</span><span class="t-dim"> for commands</span></div>
+      <br>
+    </div>
+    <div class="term-input-row">
+      <span class="t-ps">isaac@isaacOS ~ %</span>
+      <input id="cmd" placeholder="type a command…" autocomplete="off" spellcheck="false">
+    </div>
+  </div>
+</div>
+
+<!-- Pet -->
+<div class="window" id="petwin" style="top:200px;left:290px;">
+  <div class="titlebar"><div class="tls"><div class="tl r" onclick="closeApp('petwin')"></div><div class="tl y" onclick="closeApp('petwin')"></div><div class="tl g"></div></div><span class="tb-title">Bits the Cat</span></div>
+  <div class="pet-stage">
+    <canvas id="pet-canvas" width="120" height="120"></canvas>
+    <div class="pet-name">BITS</div>
+    <div class="pet-mood" id="pet-mood">😽 vibing</div>
+    <div class="pet-actions">
+      <div class="pet-btn" onclick="petFeed()">🐟 feed</div>
+      <div class="pet-btn" onclick="petPet()">🤚 pet</div>
+      <div class="pet-btn" onclick="petPlay()">🎾 play</div>
+    </div>
+  </div>
+</div>
+
+<!-- Settings -->
+<div class="window" id="settings-win" style="top:90px;left:150px;">
+  <div class="titlebar"><div class="tls"><div class="tl r" onclick="closeApp('settings-win')"></div><div class="tl y" onclick="closeApp('settings-win')"></div><div class="tl g"></div></div><span class="tb-title">System Preferences</span></div>
+  <div class="content" style="padding:20px;">
+    <div class="settings-section">
+      <div class="settings-label">Desktop Wallpaper</div>
+      <div class="bg-grid" id="bg-grid"></div>
+    </div>
+    <div class="settings-section" style="margin-top:22px;">
+      <div class="settings-label">Appearance</div>
+      <div class="settings-row">
+        <div><div class="sr-label">Toast notifications</div><div class="sr-sub">Show system alerts</div></div>
+        <div class="toggle on" id="tog-toast" onclick="this.classList.toggle('on')"></div>
+      </div>
+      <div class="settings-row">
+        <div><div class="sr-label">Pet window</div><div class="sr-sub">Open Bits on startup</div></div>
+        <div class="toggle" id="tog-pet" onclick="this.classList.toggle('on')"></div>
+      </div>
+    </div>
+    <div class="settings-section" style="margin-top:22px;">
+      <div class="settings-label">About IsaacOS</div>
+      <div class="settings-row"><div><div class="sr-label">Version</div></div><span style="font-size:12px;color:var(--text-secondary)">2.0.0</span></div>
+      <div class="settings-row"><div><div class="sr-label">Built with</div></div><span style="font-size:12px;color:var(--text-secondary)">Claude ✦</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast">
+  <div class="toast-ico" id="toast-ico">👋</div>
+  <div><div class="toast-t" id="toast-t">IsaacOS</div><div class="toast-m" id="toast-m">Welcome back, Isaac.</div></div>
+</div>
+
+</div><!-- #desktop -->
+<script>
+/* ════ CLOCK ════ */
+function tick(){document.getElementById('clock').textContent=new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',second:'2-digit'});}
+tick();setInterval(tick,1000);
+
+/* ════ WINDOW MANAGEMENT ════ */
+let zTop=100;
+function openApp(id){
+  const w=document.getElementById(id);if(!w)return;
+  w.style.display='block';w.style.zIndex=++zTop;
+  focusWin(id);
+  const di=document.getElementById('di-'+id);
+  if(di)di.classList.add('active');
+}
+function closeApp(id){
+  const w=document.getElementById(id);if(!w)return;
+  w.style.transition='opacity 0.15s,transform 0.15s';
+  w.style.opacity='0';w.style.transform='scale(0.94)';
+  setTimeout(()=>{w.style.display='none';w.style.opacity='';w.style.transform='';w.style.transition='';},150);
+  const di=document.getElementById('di-'+id);if(di)di.classList.remove('active');
+}
+function focusWin(id){
+  document.querySelectorAll('.window').forEach(w=>w.classList.remove('focused'));
+  const w=document.getElementById(id);if(w)w.classList.add('focused');
+}
+document.querySelectorAll('.window').forEach(w=>{
+  w.addEventListener('mousedown',()=>{w.style.zIndex=++zTop;focusWin(w.id);});
+});
+
+/* ── Dragging ── */
+document.querySelectorAll('.titlebar').forEach(bar=>{
+  const win=bar.closest('.window');
+  let drag=false,ox,oy;
+  bar.addEventListener('mousedown',e=>{
+    if(e.target.classList.contains('tl'))return;
+    drag=true;ox=e.clientX-win.offsetLeft;oy=e.clientY-win.offsetTop;win.style.transition='none';
+  });
+  document.addEventListener('mousemove',e=>{
+    if(!drag)return;
+    win.style.left=Math.max(0,e.clientX-ox)+'px';
+    win.style.top=Math.max(28,e.clientY-oy)+'px';
+  });
+  document.addEventListener('mouseup',()=>{drag=false;win.style.transition='';});
+});
+
+/* ════ FILE VIEWER ════ */
+const fileContents={
+  about:{title:'about.txt',html:`<div style="font-family:'Geist Mono',monospace;font-size:12.5px;line-height:2;color:rgba(255,255,255,0.65);white-space:pre-wrap">Name    : Isaac McGinnis
+Role    : Builder · Radio Guy · AI Tinkerer
+Location: Boston, MA
+
+Projects:
+  ▸ Playback        — USA sports data API
+  ▸ Everybody.FM    — AI internet radio
+  ▸ IsaacOS         — this thing
+
+Contact : hi@isaac.help
+Web     : isaacmcginnis.com
+Fav AI  : Claude ✦</div>`},
+  'projects-dir':{title:'projects/',html:`<div style="font-family:'Geist Mono',monospace;font-size:12.5px;line-height:2;color:rgba(255,255,255,0.65);white-space:pre-wrap">drwxr-xr-x  playback/
+  └─ REST + WebSocket API · US sports data
+
+drwxr-xr-x  everybody-fm/
+  └─ AI internet radio · ElevenLabs drops
+
+drwxr-xr-x  experiments/
+  └─ OpenClaw · OpenCode · agents
+
+-rw-r--r--  isaacOS.html   ← you are here</div>`},
+  ideas:{title:'ideas.md',html:`<div style="font-family:'Geist Mono',monospace;font-size:12.5px;line-height:2;color:rgba(255,255,255,0.65);white-space:pre-wrap"><span style="color:#fbbf24"># Ideas</span>
+
+<span style="color:#a78bfa">## Active</span>
+<span style="color:#4ade80">[ ]</span> Playback public dashboard launch
+<span style="color:#4ade80">[ ]</span> Everybody.FM live show scheduler
+<span style="color:#4ade80">[ ]</span> IsaacOS v3 — multi-user mode?
+
+<span style="color:#a78bfa">## Someday</span>
+<span style="color:#4ade80">[ ]</span> Sports data embeddable widgets
+<span style="color:#4ade80">[ ]</span> AI DJ that takes listener requests
+
+<span style="color:rgba(255,255,255,0.3)">&#62; Build weird, useful, slightly chaotic things.</span></div>`},
+  radio:{title:'radio-drops.wav',html:`<div style="text-align:center;padding:24px 10px;">
+<div style="font-size:52px;margin-bottom:14px;animation:pulse 2s infinite">📻</div>
+<div style="font-size:15px;font-weight:600;color:var(--text-primary);margin-bottom:5px">radio-drops.wav</div>
+<div style="font-size:12px;color:var(--text-secondary);margin-bottom:22px">AI-generated DJ commentary · ElevenLabs · 44 MB</div>
+<a href="https://everybody.fm" target="_blank" style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.25);border-radius:10px;color:#4ade80;text-decoration:none;font-size:13.5px;font-weight:600;transition:all 0.18s;" onmouseover="this.style.background='rgba(74,222,128,0.22)'" onmouseout="this.style.background='rgba(74,222,128,0.12)'">
+  🎙️ &nbsp;Open Everybody.FM →
+</a>
+<div style="margin-top:20px;padding:12px 16px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.06);font-family:'Geist Mono',monospace;font-size:11px;color:var(--text-tertiary);text-align:left">
+Format : WAV 44.1kHz stereo<br>
+Source : ElevenLabs TTS<br>
+Station: Everybody.FM<br>
+Status : <span style="color:#4ade80">● ON AIR</span>
+</div></div>
+<style>@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}</style>`},
+  cat:{title:'cat.jpeg',html:`<div style="text-align:center">
+<img src="https://czogxhqruxzhdiotdwyn.supabase.co/storage/v1/object/public/media/1775023689491-7wqyi3dd5sd.jpeg" style="width:100%;border-radius:8px;display:block">
+<div style="margin-top:10px;font-size:11px;color:var(--text-tertiary);">cat.jpeg · 1.2 MB · JPEG</div></div>`},
+};
+
+function openFile(key){
+  const f=fileContents[key];if(!f)return;
+  document.getElementById('fv-title').textContent=f.title;
+  document.getElementById('fv-body').innerHTML=f.html;
+  openApp('fileview');
+}
+
+/* ════ TERMINAL ════ */
+const termOut=document.getElementById('termOutput');
+const cmdIn=document.getElementById('cmd');
+const cmdHist=[];let histIdx=-1;
+
+function addLine(html){
+  const d=document.createElement('div');d.innerHTML=html;
+  termOut.appendChild(d);termOut.scrollTop=termOut.scrollHeight;
+}
+
+const CMDS={
+  help:()=>{
+    addLine('<span class="t-hi">── IsaacOS commands ──────────────────</span>');
+    [['about','Who is Isaac?'],['projects','Active projects'],['radio','Go to Everybody.FM'],
+     ['playback','Playback info'],['email','Get contact email'],['zo','Open Zo (+$10)'],
+     ['pet','Open Bits the cat'],['cat','Meow'],['neofetch','System info'],
+     ['weather','Boston weather'],['matrix','Go deeper'],['fortune','Random wisdom'],
+     ['date','Date + time'],['whoami','Who are you?'],['ls','List files'],
+     ['open <app>','Open an app'],['bg <1-8>','Change wallpaper'],['clear','Clear screen'],
+    ].forEach(([c,d])=>addLine(`  <span style="color:#60a5fa;font-family:'Geist Mono',monospace;display:inline-block;width:140px">${c}</span><span class="t-out">${d}</span>`));
+  },
+  about:()=>addLine('<span class="t-out">Isaac McGinnis — builder · radio guy · AI tinkerer. Boston, MA.</span>'),
+  projects:()=>{
+    addLine('<span class="t-ok">▸ Playback</span>     <span class="t-out">— USA sports data API (REST + WebSocket)</span>');
+    addLine('<span class="t-ok">▸ Everybody.FM</span> <span class="t-out">— AI internet radio · ElevenLabs</span>');
+    addLine('<span class="t-ok">▸ IsaacOS</span>      <span class="t-out">— this very thing you\'re looking at</span>');
+  },
+  radio:()=>{addLine('<span class="t-ok">Tuning in to Everybody.FM...</span>');window.open('https://everybody.fm','_blank');},
+  playback:()=>addLine('<span class="t-out">Playback: REST + WebSocket API for US sports. In progress 🚧</span>'),
+  email:()=>addLine(`<span class="t-link" onclick="window.location='mailto:hi@isaac.help'">hi@isaac.help</span> <span class="t-out">← click to open</span>`),
+  zo:()=>{addLine('<span class="t-ok">Opening Zo Computer + $10 credit...</span>');window.open('https://zo-computer.cello.so/a2b9yiA4fId');},
+  pet:()=>{openApp('petwin');addLine('<span class="t-pink">Bits has entered the chat (=^･ω･^=)</span>');},
+  cat:()=>{
+    const cats=['(=^･ω･^=)','(=ↀᆺↀ=)','ฅ^•ﻌ•^ฅ','(^・ω・^ )','≋(=^‥^=)≋'];
+    addLine(`<span class="t-pink" style="font-family:'Geist Mono',monospace">${cats[Math.floor(Math.random()*cats.length)]}</span>`);
+    addLine('<span class="t-out">meow.</span>');
+  },
+  neofetch:()=>{
+    addLine(`<span style="color:#f9a8d4;font-size:13px;font-family:'Geist Mono',monospace">
+  /\\_____/\\   <span style="color:var(--text-primary)">isaac</span><span class="t-out">@</span><span style="color:var(--accent)">isaacOS</span>
+ /  o   o  \\  <span class="t-out">──────────────────</span>
+( ==  ^  == ) <span class="t-out">OS:</span> IsaacOS v2.0
+ )         (  <span class="t-out">Shell:</span> zsh
+(           ) <span class="t-out">Projects:</span> Playback, Everybody.FM
+ \\  (v v)  /  <span class="t-out">Pet:</span> Bits the Cat
+  \\_ ^ ^ _/   <span class="t-out">AI:</span> Claude ✦
+              <span class="t-out">Location:</span> Boston, MA</span>`);
+  },
+  weather:()=>{
+    addLine('<span class="t-out">Boston, MA — Fetching...</span>');
+    setTimeout(()=>{addLine('<span class="t-ok">Boston, MA · 58°F · 🌤 Partly Cloudy · Wind 12mph NE</span>');},500);
+  },
+  matrix:()=>{
+    addLine('<span style="color:#4ade80">Wake up, Neo...</span>');
+    const chars='ﾊﾐﾋｳｼﾅﾓﾆｻﾜﾂｵﾘｱﾎﾃﾏｹﾒｴｶｷﾑﾕﾗｾﾈｽﾀﾇﾍ01';
+    let i=0;
+    const iv=setInterval(()=>{
+      if(i++>8){clearInterval(iv);addLine('<span style="color:#4ade80">...</span><span class="t-out"> the Matrix has you.</span>');return;}
+      let line='';
+      for(let j=0;j<50;j++)line+=chars[Math.floor(Math.random()*chars.length)];
+      addLine(`<span style="color:#4ade80;opacity:${(Math.random()*0.7+0.3).toFixed(2)};font-family:'Geist Mono',monospace">${line}</span>`);
+    },70);
+  },
+  fortune:()=>{
+    const f=['Ship fast, learn faster.','Build weird. Build useful.','The best radio station is the one you build yourself.',
+      'Every bug is a feature in disguise.','AI is a collaborator, not a replacement.','Just one more deploy.'];
+    addLine(`<span class="t-hi">"${f[Math.floor(Math.random()*f.length)]}"</span>`);
+  },
+  date:()=>addLine(`<span class="t-out">${new Date().toDateString()} ${new Date().toLocaleTimeString()}</span>`),
+  whoami:()=>addLine('<span class="t-out">isaac</span>'),
+  ls:()=>{
+    [['👤','about.txt','2 KB'],['📁','projects/','—'],['📄','ideas.md','14 KB'],
+     ['🎙️','radio-drops.wav','44 MB'],['🐱','cat.jpeg','1.2 MB'],['🐾','Bits.app','cute']
+    ].forEach(([i,n,s])=>addLine(`  ${i} <span style="color:rgba(255,255,255,0.7);font-family:'Geist Mono',monospace">${n.padEnd(20)}</span><span class="t-out">${s}</span>`));
+  },
+  open:(args)=>{
+    const map={about:'about',projects:'projects',files:'files',browser:'browser',terminal:'terminalApp',settings:'settings-win',pet:'petwin'};
+    const id=map[args[0]];
+    if(id){openApp(id);addLine(`<span class="t-ok">Opening ${args[0]}…</span>`);}
+    else addLine('<span class="t-err">open: unknown app — try: about projects files browser terminal settings pet</span>');
+  },
+  bg:(args)=>{
+    const n=parseInt(args[0]);
+    if(isNaN(n)||n<1||n>WALLPAPERS.length){addLine(`<span class="t-err">bg: choose 1–${WALLPAPERS.length} (e.g. bg 2)</span>`);}
+    else{setWallpaper(n-1);addLine(`<span class="t-ok">Wallpaper changed to ${WALLPAPERS[n-1].label}</span>`);}
+  },
+  clear:()=>{termOut.innerHTML='';},
+};
+
+cmdIn.addEventListener('keydown',e=>{
+  if(e.key==='Enter'){
+    const raw=cmdIn.value.trim();if(!raw)return;
+    cmdHist.unshift(raw);histIdx=-1;
+    addLine(`<span class="t-prompt">isaac@isaacOS ~ %</span> <span class="t-cmd">${raw}</span>`);
+    const [cmd,...args]=raw.split(' ');
+    if(CMDS[cmd])CMDS[cmd](args);
+    else addLine(`<span class="t-err">command not found: ${cmd} — type 'help'</span>`);
+    cmdIn.value='';
+  }else if(e.key==='ArrowUp'){histIdx=Math.min(histIdx+1,cmdHist.length-1);cmdIn.value=cmdHist[histIdx]||'';e.preventDefault();}
+  else if(e.key==='ArrowDown'){histIdx=Math.max(histIdx-1,-1);cmdIn.value=histIdx<0?'':(cmdHist[histIdx]||'');e.preventDefault();}
+});
+
+/* ════ PET ════ */
+const petCanvas=document.getElementById('pet-canvas');
+const ctx=petCanvas.getContext('2d');
+let petState='idle',petFrame=0,petBlink=false,petTailAngle=0,petTailDir=1,petParticles=[];
+
+function drawPet(){
+  ctx.clearRect(0,0,120,120);
+  petFrame++;
+  const cx=60,cy=65;
+
+  // tail
+  const tSpeed=(petState==='happy'||petState==='playing')?0.12:0.05;
+  petTailAngle+=tSpeed*petTailDir;
+  if(Math.abs(petTailAngle)>0.65)petTailDir*=-1;
+
+  ctx.save();ctx.translate(cx+16,cy+16);ctx.rotate(petTailAngle);
+  ctx.beginPath();ctx.moveTo(0,0);ctx.quadraticCurveTo(22,8,20,26);
+  ctx.lineWidth=5.5;ctx.strokeStyle='#e8955a';ctx.lineCap='round';ctx.stroke();
+  ctx.restore();
+
+  const bob=petState==='sleeping'?0:Math.sin(petFrame*0.06)*1.8;
+
+  // body
+  ctx.beginPath();ctx.ellipse(cx,cy+bob,22,19,0,0,Math.PI*2);
+  ctx.fillStyle='#f4a261';ctx.fill();
+
+  // belly
+  ctx.beginPath();ctx.ellipse(cx,cy+9+bob,12,10,0,0,Math.PI*2);
+  ctx.fillStyle='#fde8d0';ctx.fill();
+
+  // head
+  ctx.beginPath();ctx.ellipse(cx,cy-21+bob,20,18,0,0,Math.PI*2);
+  ctx.fillStyle='#f4a261';ctx.fill();
+
+  // ears
+  [[-15,-10,1],[15,-10,-1]].forEach(([dx,dy,s])=>{
+    ctx.beginPath();ctx.moveTo(cx+dx,cy+dy+bob);
+    ctx.lineTo(cx+dx+s*7,cy+dy-14+bob);ctx.lineTo(cx+dx-s*4,cy+dy-2+bob);
+    ctx.closePath();ctx.fillStyle='#f4a261';ctx.fill();
+    ctx.beginPath();ctx.moveTo(cx+dx+s*1,cy+dy-2+bob);
+    ctx.lineTo(cx+dx+s*5,cy+dy-10+bob);ctx.lineTo(cx+dx-s*2,cy+dy-3+bob);
+    ctx.closePath();ctx.fillStyle='#f9c4b5';ctx.fill();
+  });
+
+  // eyes
+  if(petState==='sleeping'){
+    ctx.beginPath();
+    ctx.moveTo(cx-9,cy-23+bob);ctx.lineTo(cx-4,cy-23+bob);
+    ctx.moveTo(cx+4,cy-23+bob);ctx.lineTo(cx+9,cy-23+bob);
+    ctx.lineWidth=2;ctx.strokeStyle='#555';ctx.lineCap='round';ctx.stroke();
+    ctx.font='bold 10px serif';ctx.fillStyle='rgba(255,255,255,0.4)';
+    ctx.fillText('z',cx+22,cy-28+bob+Math.sin(petFrame*0.04)*2);
+    ctx.font='8px serif';ctx.fillStyle='rgba(255,255,255,0.2)';
+    ctx.fillText('z',cx+28,cy-38+bob+Math.sin(petFrame*0.04+1)*2);
+  }else{
+    const blink=petBlink&&petFrame%2===0;
+    [-8,8].forEach(dx=>{
+      ctx.beginPath();
+      if(blink){
+        ctx.moveTo(cx+dx-4,cy-23+bob);ctx.lineTo(cx+dx+4,cy-23+bob);
+        ctx.lineWidth=2;ctx.strokeStyle='#333';ctx.stroke();
+      }else{
+        ctx.arc(cx+dx,cy-23+bob,4.5,0,Math.PI*2);
+        ctx.fillStyle=petState==='happy'?'#1a73e8':'#2a2a2a';ctx.fill();
+        ctx.beginPath();ctx.arc(cx+dx+1.5,cy-25+bob,1.5,0,Math.PI*2);
+        ctx.fillStyle='white';ctx.fill();
+        if(petState==='happy'){
+          ctx.beginPath();ctx.arc(cx+dx,cy-23+bob,5.5,0,Math.PI*2);
+          ctx.strokeStyle='rgba(255,220,60,0.35)';ctx.lineWidth=2;ctx.stroke();
         }
-        function increaseCount() {
-            count++;
-            document.getElementById("counter").innerText = count;
-            document.getElementById("dynamicText").innerText = count > 10 ? "Yes, it REALLY is!" : "Yes, it is.";
-        }
-    </script>
+      }
+    });
+  }
+
+  // nose
+  ctx.beginPath();ctx.arc(cx,cy-15+bob,3,0,Math.PI*2);
+  ctx.fillStyle='#e8626b';ctx.fill();
+
+  // mouth
+  ctx.beginPath();
+  if(petState==='eating'){ctx.arc(cx,cy-11+bob,5,0,Math.PI);}
+  else{ctx.moveTo(cx-5,cy-11+bob);ctx.quadraticCurveTo(cx,petState==='happy'?cy-5+bob:cy-9+bob,cx+5,cy-11+bob);}
+  ctx.lineWidth=1.5;ctx.strokeStyle='#c0392b';ctx.stroke();
+
+  // whiskers
+  [-1,1].forEach(s=>{
+    for(let i=0;i<3;i++){
+      ctx.beginPath();
+      const wy=cy-14+(i*3)+bob;
+      ctx.moveTo(cx+s*6,wy);ctx.lineTo(cx+s*22,wy+(i-1)*1.5);
+      ctx.lineWidth=0.8;ctx.strokeStyle='rgba(255,255,255,0.4)';ctx.stroke();
+    }
+  });
+
+  // particles
+  if((petState==='happy'||petState==='eating')&&petFrame%8===0){
+    petParticles.push({x:cx+Math.random()*30-15,y:cy-32+bob,vx:(Math.random()-0.5)*2,vy:-2-Math.random(),life:30,e:petState==='eating'?'🐟':'✨'});
+  }
+  petParticles=petParticles.filter(p=>{
+    p.x+=p.vx;p.y+=p.vy;p.life--;
+    ctx.globalAlpha=p.life/30;ctx.font='13px serif';ctx.fillText(p.e,p.x,p.y);
+    ctx.globalAlpha=1;return p.life>0;
+  });
+}
+
+setInterval(()=>{if(petState!=='sleeping'){petBlink=true;setTimeout(()=>petBlink=false,120);}},3000+Math.random()*2000);
+let petTimer;
+function setPetState(s,dur=3000){
+  petState=s;
+  const moods={idle:'😽 vibing',happy:'😸 SO HAPPY!',eating:'😋 om nom nom',playing:'😹 ZOOM!',sleeping:'😴 napping'};
+  document.getElementById('pet-mood').textContent=moods[s]||s;
+  clearTimeout(petTimer);
+  if(s!=='sleeping')petTimer=setTimeout(()=>{petState='idle';document.getElementById('pet-mood').textContent='😽 vibing';},dur);
+}
+function petFeed(){setPetState('eating',3000);showToast('🐟','Bits','nom nom nom...',2000);}
+function petPet(){setPetState('happy',3000);showToast('🐱','Bits','purrrrrr ♪',2000);}
+function petPlay(){setPetState('playing',4000);showToast('🎾','Bits','ZOOOOM!!!',2000);}
+setInterval(()=>{if(petState==='idle'&&Math.random()<0.1)setPetState('sleeping',8000);},12000);
+setInterval(drawPet,30);
+
+/* ════ WALLPAPERS ════ */
+const WALLPAPERS=[
+  {type:'img',src:'https://czogxhqruxzhdiotdwyn.supabase.co/storage/v1/object/public/media/1775023689491-7wqyi3dd5sd.jpeg',label:'Default'},
+  {type:'grad',val:'linear-gradient(135deg,#0f0c29,#302b63,#24243e)',label:'Midnight'},
+  {type:'grad',val:'linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)',label:'Deep Navy'},
+  {type:'grad',val:'linear-gradient(135deg,#0a0a0a,#1a0a0a,#2d1515)',label:'Dark Red'},
+  {type:'grad',val:'linear-gradient(135deg,#0d1117,#0a2a1a,#051a0d)',label:'Forest'},
+  {type:'grad',val:'linear-gradient(135deg,#1c0a2e,#2e0a1c,#0a0a2e)',label:'Cosmos'},
+  {type:'grad',val:'linear-gradient(135deg,#0a0a0a,#111,#1a1a1a)',label:'Pure Dark'},
+  {type:'grad',val:'linear-gradient(160deg,#0e1520,#1a2035,#0e1520)',label:'Slate'},
+];
+let selBg=0;
+function setWallpaper(i){
+  selBg=i;const d=document.getElementById('desktop');const w=WALLPAPERS[i];
+  if(w.type==='img'){d.style.backgroundImage=`url('${w.src}')`;d.style.backgroundSize='cover';}
+  else{d.style.backgroundImage=w.val;d.style.backgroundSize='100% 100%';}
+  document.querySelectorAll('.bg-swatch').forEach((s,idx)=>s.classList.toggle('selected',idx===i));
+}
+function buildBgGrid(){
+  const grid=document.getElementById('bg-grid');grid.innerHTML='';
+  WALLPAPERS.forEach((w,i)=>{
+    const sw=document.createElement('div');
+    sw.className='bg-swatch'+(i===selBg?' selected':'');
+    sw.title=w.label;sw.onclick=()=>setWallpaper(i);
+    sw.innerHTML=w.type==='img'
+      ?`<img src="${w.src}" alt="${w.label}"><div class="sw-label">${w.label}</div>`
+      :`<div class="sw-grad" style="background:${w.val}"></div><div class="sw-label">${w.label}</div>`;
+    grid.appendChild(sw);
+  });
+}
+buildBgGrid();
+
+/* ════ TOAST ════ */
+function showToast(icon,title,msg,dur=3500){
+  document.getElementById('toast-ico').textContent=icon;
+  document.getElementById('toast-t').textContent=title;
+  document.getElementById('toast-m').textContent=msg;
+  const t=document.getElementById('toast');t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),dur);
+}
+setTimeout(()=>showToast('👋','IsaacOS','Welcome back, Isaac.'),900);
+
+/* desktop click deselect */
+document.getElementById('desktop').addEventListener('click',e=>{
+  if(e.target===document.getElementById('desktop'))
+    document.querySelectorAll('.window').forEach(w=>w.classList.remove('focused'));
+});
+</script>
 </body>
 </html>
