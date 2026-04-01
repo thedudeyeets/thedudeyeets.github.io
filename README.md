@@ -33,7 +33,7 @@ So that’s what you call me. Or, uh, His Dudeness, Duder, El Duderino if you're
 
 ## **Random Fact About Me**
 ✔ My cat's name is Cigarette  
-![Cigarette](https://czogxhqruxzhdiotdwyn.supabase.co/storage/v1/object/public/media/1775023688751-u037c13sk6.jpeg)
+![Cigarette](https://czogxhqruxzhdiotdwyn.supabase.co/storage/v1/object/public/media/1775023689491-7wqyi3dd5sd.jpeg)
 ---
 
 ## **Let’s Chat!**
